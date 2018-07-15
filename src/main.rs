@@ -1,6 +1,7 @@
 #![allow(unknown_lints)]
 #![warn(clippy)]
 
+#[macro_use] extern crate boolean_enums;
 extern crate capabilities;
 #[macro_use] extern crate clap;
 extern crate env_logger;
@@ -12,6 +13,7 @@ extern crate serde;
 #[macro_use] extern crate serde_derive;
 extern crate toml;
 
+use std::collections::BTreeMap;
 use std::fs::*;
 use std::io::prelude::*;
 use std::mem::*;
@@ -37,14 +39,31 @@ fn DEFAULT_HDPARM_PATH() -> String {
     "/sbin/hdparm".to_string()
 }
 
+#[allow(non_snake_case)]
+fn DEFAULT_LEVELS() -> BTreeMap<String, u8> {
+    [
+        (String::from("loud"), 254),
+        (String::from("quiet"), 128)
+    ].iter().cloned().collect()
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct Config {
-    devices: Vec<String>,
     #[serde(default = "DEFAULT_HDPARM_PATH")]
     hdparm_path: String,
+    devices: Vec<String>,
+    #[serde(default = "DEFAULT_LEVELS")]
+    levels: BTreeMap<String, u8>,
     #[serde(skip)]
-    command_arg: String
+    command_arg: Option<String>,
+    #[serde(skip)]
+    is_showing: IsShowing,
+    #[serde(skip)]
+    is_listing: IsListing
 }
+
+gen_boolean_enum!(IsShowing);
+gen_boolean_enum!(IsListing);
 
 fn main() {
     if let Err(e) = the_main() {
@@ -77,6 +96,13 @@ fn the_main() -> Result<()> {
     gain_caps()?;
     debug!("set capabilities");
 
+    if config.is_listing.into() {
+        for i in config.levels {
+            println!("{} = {}", i.0, i.1);
+        }
+        return Ok(())
+    }
+
     for g in &config.devices {
         debug!("processing glob \"{}\"", g);
         let files = glob_with(&g, &MatchOptions {
@@ -105,16 +131,44 @@ fn the_main() -> Result<()> {
 }
 
 fn get_config() -> Result<Config> {
+    let matches = get_matches();
+
+    let mut config = read_config_file()?;
+    config.command_arg = matches.value_of("loudness").map(String::from);
+    config.is_showing = matches.subcommand_matches("show").is_some().into();
+    config.is_listing = matches.subcommand_matches("list").is_some().into();
+
+    if (!config.is_listing).into() && config.command_arg.is_none() {
+        // show is the default if no arguments are passed
+        config.is_showing = true.into();
+    }
+
+    // loud and quiet are always present, but can be overridden
+    config.levels.entry(String::from("loud")).or_insert(254);
+    config.levels.entry(String::from("quiet")).or_insert(128);
+
+    validate_config(&config)?;
+
+    Ok(config)
+}
+
+fn get_matches() -> Box<ArgMatches<'static>> {
     let matches = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())
         .about(crate_description!())
-        .arg(Arg::with_name("loudness")
-            .default_value("show")
+        .subcommand(SubCommand::with_name("show")
+            .about("Shows the current state")
+        ).subcommand(SubCommand::with_name("list")
+            .about("Lists all configured loudness levels.  Default is \
+                loud = \"254\" and quiet = \"128\"")
+        ).arg(Arg::with_name("loudness")
             .value_name("LOUDNESS_LEVEL")
-            .possible_values(&["quiet", "loud", "show"])
         ).get_matches();
+    Box::new(matches)
+}
 
+fn read_config_file() -> Result<Config> {
     let mut config_file = File::open(CONFIG_PATH)
         .context("error opening the configuration file")?;
     let mut config_str = String::new();
@@ -122,12 +176,26 @@ fn get_config() -> Result<Config> {
         .context("error reading from the configuration file")?;
     drop(config_file);
 
-    let mut config: Config = toml::from_str(&config_str)
+    let config: Config = toml::from_str(&config_str)
         .context("error parsing the configuration")?;
 
-    config.command_arg = matches.value_of("loudness").unwrap().to_string();
-
     Ok(config)
+}
+
+fn validate_config(config: &Config) -> Result<()> {
+    for i in &config.levels {
+        let level = *i.1;
+        if level < 128 || level > 254 {
+            bail!(
+                "invalid AAM level in {}: {} = {}",
+                CONFIG_PATH,
+                i.0,
+                level
+            );
+        }
+    }
+
+    Ok(())
 }
 
 fn gain_caps() -> Result<()> {
@@ -171,10 +239,10 @@ fn set_ambient_cap(cap: u8) -> Result<()> { unsafe {
 fn process_devfile(config: &Config, dev_filename: &PathBuf) -> Result<()> {
     let mut cmd = Command::new(&config.hdparm_path);
         cmd.arg("-M");
-        if config.command_arg == "show" {
+        if config.is_showing.into() {
             cmd.arg(&dev_filename);
         } else {
-            let hdparm_arg = translate_arg(&config)?;
+            let hdparm_arg = format!("{}", translate_arg(&config)?);
             cmd.arg(hdparm_arg).arg(&dev_filename.as_os_str());
         };
         cmd.spawn().context("error calling hdparm")?
@@ -185,10 +253,17 @@ fn process_devfile(config: &Config, dev_filename: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn translate_arg(config: &Config) -> Result<String> {
-    Ok(match config.command_arg.as_str() {
-        "quiet" => String::from("128"),
-        "loud" => String::from("254"),
-        _ => bail!("wrong command argument")
+fn translate_arg(config: &Config) -> Result<u8> {
+    let command_arg = config.command_arg.as_ref().unwrap();
+
+    Ok(match config.levels.get(command_arg) {
+        Some(level) => *level,
+        None => {
+            match command_arg.as_str() {
+                "loud" => 254,
+                "quiet" => 128,
+                _ => bail!("no such loudness level: {}", command_arg)
+            }
+        }
     })
 }
