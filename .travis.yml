@@ -8,9 +8,5 @@ matrix:
     allow_failures:
         - rust: nightly
 
-script:
-    - cargo build --all-features
-    - cargo test --all-features
-
 before_install:
-    - sudo apt-get install libcap2
+    - sudo apt-get install libcap-dev
