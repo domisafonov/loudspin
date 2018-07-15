@@ -19,8 +19,17 @@ $ loudspin
 
 Setup the devices in /etc/loudspin.conf:
 ```toml
+hdparm_path = "/sbin/hdparm" # default, can be omitted
 devices = ["/dev/sd[bc]", "/dev/custom_device_*"] # glob patterns
-hdparm_path = "/sbin/hdparm"
+
+[levels]
+# default "loud = 254" and "quiet = 128" levels are always present,
+# but can be overridden
+loud = 253
+
+# you can define your own AAM levels
+medium = 196
+noisy = 234
 ```
 
 # Installation
