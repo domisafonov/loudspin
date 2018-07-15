@@ -1,0 +1,21 @@
+[package]
+name = "loudspin"
+version = "0.1.0"
+authors = ["Dmitry Safonov <dimanss47@dimanss47.net>"]
+description = "Hard disk loudness controller (thin wrapper around hdparm -M)"
+repository = "https://github.com/dmnsafonov/loudspin"
+readme = "README.md"
+keywords = ["AAM", "Automatic Acoustic Management", "hdd loudness", "hdparm"]
+license = "GPL-3.0-only"
+
+[dependencies]
+capabilities = "^0.3.0"
+clap = "^2.26.2"
+env_logger = "^0.5.10"
+failure = "^0.1.1"
+glob = "^0.2.11"
+libc = "0.2.33"
+log = "^0.4.3"
+serde = "^1.0.19"
+serde_derive = "^1.0.19"
+toml = "^0.4.5"
