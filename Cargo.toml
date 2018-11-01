@@ -11,7 +11,7 @@ license = "GPL-3.0-only"
 [dependencies]
 boolean-enums = "^0.2.0"
 capabilities = "^0.3.0"
-clap = "^2.26.2"
+clap = "^2.32.0"
 env_logger = "^0.5.10"
 failure = "^0.1.1"
 glob = "^0.2.11"

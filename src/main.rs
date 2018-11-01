@@ -2,9 +2,9 @@
 
 #[macro_use] extern crate boolean_enums;
 extern crate capabilities;
-#[macro_use] extern crate clap;
+extern crate clap;
 extern crate env_logger;
-#[macro_use] extern crate failure;
+extern crate failure;
 extern crate glob;
 extern crate libc;
 #[macro_use] extern crate log;
@@ -66,8 +66,8 @@ gen_boolean_enum!(IsListing);
 
 fn main() {
     if let Err(e) = the_main() {
-        let mut first = true;;
-        for i in e.causes() {
+        let mut first = true;
+        for i in e.iter_chain() {
             if !first {
                 eprint!(": ");
             }
