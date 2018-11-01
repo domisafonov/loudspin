@@ -1,5 +1,4 @@
-#![allow(unknown_lints)]
-#![warn(clippy)]
+#![cfg_attr(feature = "nightly", warn(clippy::pedantic))]
 
 #[macro_use] extern crate boolean_enums;
 extern crate capabilities;
