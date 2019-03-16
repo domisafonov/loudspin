@@ -1,4 +1,5 @@
-#![cfg_attr(feature = "nightly", warn(clippy::pedantic))]
+#![warn(clippy::pedantic)]
+#![allow(clippy::enum_glob_use)]
 
 #[macro_use] extern crate boolean_enums;
 extern crate capabilities;
@@ -104,7 +105,7 @@ fn the_main() -> Result<()> {
 
     for g in &config.devices {
         debug!("processing glob \"{}\"", g);
-        let files = glob_with(&g, &MatchOptions {
+        let files = glob_with(&g, MatchOptions {
             require_literal_separator: true,
             require_literal_leading_dot: true,
             ..MatchOptions::default()
@@ -221,6 +222,7 @@ fn gain_caps() -> Result<()> {
 }
 
 fn set_ambient_cap(cap: u8) -> Result<()> { unsafe {
+    #[allow(clippy::cast_sign_loss)]
     let ret = prctl(
         PR_CAP_AMBIENT,
         PR_CAP_AMBIENT_RAISE as c_ulong,
