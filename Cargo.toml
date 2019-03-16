@@ -1,6 +1,6 @@
 [package]
 name = "loudspin"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2018"
 authors = ["Dmitry Safonov <dimanss47@dimanss47.net>"]
 description = "Hard disk loudness controller (thin wrapper around hdparm -M)"
