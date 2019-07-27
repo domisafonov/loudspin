@@ -75,7 +75,7 @@ fn main() {
             eprint!("{}", i);
             first = false;
         }
-        eprintln!("");
+        eprintln!();
     }
 }
 
